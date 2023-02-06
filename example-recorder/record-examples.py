@@ -3,20 +3,23 @@ import json
 import os
 import re
 import shutil
+import subprocess
 from ulid import ULID
 
-pages_dir = "./captured-examples/pages"
-static_dir = "./captured-examples/static"
+output_dir = "./recorded-examples"
+pages_dir = f"{output_dir}/pages"
+files_dir = f"{output_dir}/files"
 
 os.makedirs(pages_dir, exist_ok=True)
-os.makedirs(static_dir, exist_ok=True)
-
+os.makedirs(files_dir, exist_ok=True)
 
 def request(flow):
-    # trigger by running `curl -X SHUTDOWN -x localhost:8008 localhost > captured-examples.zip`
+    # trigger by running `curl -X SHUTDOWN -x localhost:8008 localhost > recorded-examples.zip`
     if flow.request.method == "SHUTDOWN":
-        shutil.make_archive("./captured-examples", "zip", "./captured-examples")
-        with open("./captured-examples.zip", mode="rb") as output:
+        subprocess.run("./assess-examples", shell=True)
+        subprocess.run("./report-results",  shell=True)
+        shutil.make_archive(output_dir, "zip", output_dir)
+        with open(f"{output_dir}.zip", mode="rb") as output:
             body = output.read()
             size = str(len(body))
             flow.response = http.Response.make(
@@ -62,10 +65,10 @@ def response(flow):
             # TODO fixup page relative paths
             # TODO fixup scheme relative paths "//"
             response.write(
-                # make all urls point to shared static folder
+                # make all urls point to shared files folder
                 re.sub(
                     r'(href|src)="/?',
-                    r'\1="../../static/',
+                    r'\1="../../files/',
                     # add scheme and domain to root relative paths
                     re.sub(
                         r'(href|src)="/([^/])',
@@ -78,15 +81,15 @@ def response(flow):
                 )
             )
     else:
-        static_file = os.path.join(
-            static_dir,
+        file_path = os.path.join(
+            files_dir,
             # make url schemes a folder in the path and remove query strings
             str(flow.request.pretty_url).replace("://", "/").split("?")[0],
         )
-        os.makedirs(os.path.dirname(static_file), exist_ok=True)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
         try:
-            with open(static_file, "xb") as response:
+            with open(file_path, "xb") as response:
                 # TODO fixup paths in CSS so they point to local files
                 response.write(flow.response.content)
         except:
-            print(f"Skipping {static_file}, already captured")
+            print(f"Skipping {file_path}, already captured")

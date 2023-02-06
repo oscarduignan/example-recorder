@@ -1,0 +1,5 @@
+#!/bin/bash
+
+./forward-ports
+
+mitmdump -s ./record-examples.py

@@ -1,0 +1,8 @@
+#!/bin/bash
+
+for page in ./recorded-examples/pages/*/*.html; do
+  page_dir="$(dirname $page)"
+  axe "file://$page" --chromedriver-path="/usr/bin/chromedriver" --stdout > "$page_dir/axe-report.json" &
+  java -jar /vnu.jar --skip-non-html --format json --stdout --html "$page_dir" > "$page_dir/vnu-report.json" &
+  wait
+done
